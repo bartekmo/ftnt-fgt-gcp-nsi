@@ -1,0 +1,189 @@
+config system global
+  set hostname ${hostname}
+end
+
+config sys interface
+%{ for port, address in prv_ips ~}
+  edit ${port}
+    set mode static
+    set ip ${address}/32
+    %{ if port==mgmt_port ~}
+    set allowaccess ping https ssh
+    %{ endif ~}
+  next
+%{ endfor ~}
+end
+
+config system geneve
+    edit "nsi"
+        set interface ${nsi_port}
+        set type ppp
+        set remote-ip ${gateways[nsi_port]}
+    next
+end
+
+config sys interface 
+  edit "nsi"
+      set vdom "root"
+      set type geneve
+      set interface ${nsi_port}
+  next
+end
+
+config sys interface
+  edit ${nsi_port}
+    set secondary-IP enable
+    config secondaryip
+    %{ for addr in ilb_addr }
+      edit 0
+      set ip ${addr}/32
+      set allowaccess probe-response
+      next
+    %{ endfor }
+    end
+  next
+end
+
+config system interface
+  edit port1
+    set secondary-IP enable
+    config secondaryip
+      %{ for eip in frontends}
+        edit 0
+        set ip ${eip}/32
+        set allowaccess probe-response
+        next
+      %{ endfor }
+    end
+  next
+end
+
+config route static
+%{ for subnet, info in subnets ~}
+  edit 0
+    set dst ${subnet}
+    set gateway ${gateways[info.dev]}
+    set device ${info.dev}
+    set comment ${info.name}
+  next
+%{ endfor ~}
+  edit 0
+    set device port1
+    set comment "default via external load balancer"
+    set gateway ${gateways["port1"]}
+    set priority 10
+    %{ if length(frontends)>0 ~}
+    set preferred-source ${frontends[0]}
+    %{ endif ~}
+  next
+  edit 0
+    set device nsi
+    set gateway ${gateways[nsi_port]}
+    set priority 20
+  next
+%{ if mgmt_port_public ~}
+  edit 0
+    set device ${mgmt_port}
+    set comment "default via public management port"
+    set priority 5
+    set gateway ${gateways[mgmt_port]}
+  next
+%{ endif ~}
+%{for net in ["192.168.0.0/16", "10.0.0.0/8", "172.16.0.0/12"]}
+  edit 0
+    set dst ${net}
+    set device nsi
+    set comment "rfc1918 allowed via NSI"
+    set gateway ${gateways[nsi_port]}
+  next
+%{endfor}
+%{ for net in ["35.191.0.0/16", "130.211.0.0/22"]}
+  edit 0
+    set device ${nsi_port}
+    set gateway ${gateways[nsi_port]}
+    set dst ${net}
+    set comment "GCP load balancer health checks"
+  next
+%{endfor}
+  edit 0
+    set dst 169.254.169.254 255.255.255.255
+    set gateway ${gateways["port1"]}
+    set device "port1"
+  next
+end
+
+config router policy
+  edit 0
+    set input-device nsi
+    set srcaddr all
+    set dstaddr all
+    set output-device nsi
+  next
+  %{ for eip in frontends}
+  edit 0
+    set src ${eip}/32
+    set dstaddr all
+    set output-device "port1"
+  next
+  %{ endfor }
+end
+
+config system probe-response
+    set mode http-probe
+    set http-probe-value OK
+    set port ${healthcheck_port}
+end
+config system sdn-connector
+    edit "gcp"
+        set type gcp
+        set ha-status disable
+    next
+end
+config system dns
+  set primary 169.254.169.254
+  set protocol cleartext
+  unset secondary
+end
+
+config system ha
+    set session-pickup enable
+    set session-pickup-connectionless enable
+    set session-pickup-nat enable
+end
+
+config system standalone-cluster
+    set group-member-id ${ha_indx}
+    config cluster-peer
+        %{ for peer in ha_peers }
+        edit 0
+        set peerip ${peer}
+        next
+        %{ endfor }
+    end
+end
+
+config system central-management
+  set interface-select-method specify
+  set interface ${mgmt_port}
+end
+
+%{ if fortimanager.ip != null ~}
+config system central-management
+  set type fortimanager
+  set serial-number ${fortimanager.serial}
+  set fmg ${fortimanager.ip}
+end
+%{ endif }
+
+config firewall ippool
+%{ for name, eip in frontends ~}
+  edit ${name}
+  set startip ${eip}
+  set endip ${eip}
+  set comment "GCP load balancer frontend"
+  next
+%{ endfor ~}
+end
+
+${fgt_config}
+

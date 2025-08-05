@@ -1,0 +1,41 @@
+#
+# Reserve a private address for each subnet * for each instance
+#
+## Indexed by port name * FGT instance index (port1_0, port1_1, port2_0, port2_1, ...)
+# 
+resource "google_compute_address" "prv" {
+  #  for_each = toset([for pair in setproduct(range(length(var.subnets)), range(var.cluster_size)) : join("_", pair)])
+  for_each = toset([
+    for pair in setproduct(
+      keys(data.google_compute_subnetwork.connected),
+    range(var.cluster_size))
+    : join("_", pair)
+  ])
+
+  name         = "${local.prefix}addr-${split("_", each.key)[0]}-fgt${split("_", each.key)[1] + 1}-${local.zone_short}"
+  region       = local.region
+  address_type = "INTERNAL"
+  subnetwork   = data.google_compute_subnetwork.connected[split("_", each.key)[0]].id
+}
+
+#
+# Reserve a public IP for each FGT instance (if enabled in var.mgmt_port_public)
+#
+resource "google_compute_address" "mgmt" {
+  for_each = var.mgmt_port_public ? toset(local.fgts) : toset([])
+
+  name   = "${local.prefix}addr-mgmt-${each.value}-${local.zone_short}"
+  region = local.region
+}
+
+#
+# Reserve address for ILB -  keeping the structure dynamic, but with static list of 1 defined in locals
+# 
+## Indexed by port name (port2, ...)
+# 
+resource "google_compute_address" "ilb" {
+  name         = "${local.prefix}addr-ilb-${local.zone_short}"
+  region       = local.region
+  address_type = "INTERNAL"
+  subnetwork   = data.google_compute_subnetwork.connected[local.nsi_port].id
+}
