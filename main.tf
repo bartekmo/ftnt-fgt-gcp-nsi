@@ -7,7 +7,7 @@ module "vpc_prod_data" {
   source  = "terraform-google-modules/network/google"
   version = "~> 10.0"
 
-  project_id   = var.project_id
+  project_id   = var.prod_project_id
   network_name = "${local.prefix}-prod"
   routing_mode = "GLOBAL"
 
@@ -31,7 +31,7 @@ module "vpc_prod_mgmt" {
   source  = "terraform-google-modules/network/google"
   version = "~> 10.0"
 
-  project_id   = var.project_id
+  project_id   = var.prod_project_id
   network_name = "${local.prefix}-mgmt"
   routing_mode = "GLOBAL"
 
@@ -42,7 +42,7 @@ module "vpc_prod_mgmt" {
     subnet_private_access = "true"
   }]
 }
-
+/*
 resource "google_compute_address" "psc_fmg" {
   name         = "${var.prefix}-psc-fmg"
   address_type = "INTERNAL"
@@ -59,11 +59,16 @@ resource "google_compute_forwarding_rule" "psc_fmg" {
   allow_psc_global_access = true
   load_balancing_scheme   = ""
 }
+*/
 
 module "producer" {
-  source     = "./modules/producer"
+  source     = "./modules/fgt-producer"
   prefix     = var.prefix
-  project_id = var.project_id
+  project_id = var.prod_project_id
+  fgt_image = {
+    version = "7.6.3"
+    #license = var.flex_tokens == null ? "PAYG" : "BYOL"
+  }
   networks = {
     data = {
       subnet_name = module.vpc_prod_data.subnets_names[0],
@@ -78,10 +83,7 @@ module "producer" {
     "${var.region}-c"
   ]
   flex_tokens = [for serial in local.flex_serials : fortiflexvm_entitlements_vm_token.fgts[serial].token]
-  fortimanager = {
-    ip     = "fmg2.gcp.40net.cloud" //google_compute_address.psc_fmg.address
-    serial = "FMVMELTM23000032"
-  }
+  fortimanager = var.fortimanager
   depends_on = [
     module.vpc_prod_data,
     module.vpc_prod_mgmt
@@ -92,13 +94,14 @@ module "producer" {
 module "consumer" {
   source              = "./modules/consumer"
   prefix              = "${var.prefix}-consumer1"
-  project_id          = var.project_id
+  project_id          = var.cons_project_id
   deployment_group_id = module.producer.deployment_group.id
   zones = [
     "${var.region}-b",
     "${var.region}-c"
   ]
-  region = var.region
+  region          = var.region
+  organization_id = var.cons_organization_id
 }
 
 

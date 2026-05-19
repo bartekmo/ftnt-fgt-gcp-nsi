@@ -38,7 +38,7 @@ locals {
   prefix = length(var.prefix) > 0 && substr(var.prefix, -1, 1) != "-" ? "${var.prefix}-" : var.prefix
 
   # Auto-set NIC type to GVNIC if ARM image was selected
-  nic_type = var.fgt_image.arch == "arm" ? "GVNIC" : var.nic_type
+  nic_type = var.nic_type # strcontains(var.fgt_image_url, "arm64") ? "GVNIC" : var.nic_type
 
   # Calculate last port for management or copy from vars. Used for FGT configuration bootstrap, ACL, and public IPs. 
   mgmt_port = var.mgmt_port != null ? var.mgmt_port : "port2"

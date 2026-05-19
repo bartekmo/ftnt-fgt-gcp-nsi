@@ -139,32 +139,7 @@ variable "flex_tokens" {
   default     = []
 }
 
-variable "fgt_image" {
-  type = object({
-    project = optional(string, "fortigcp-project-001")
-    name    = optional(string, "")
-    family  = optional(string, "fortigate-74-payg")
-    version = optional(string, "")
-    arch    = optional(string, "x64")
-    lic     = optional(string, "payg")
-  })
-  description = "Indicate FortiOS image you want to deploy by specifying one of the following: image family name (as image.family); firmware version, architecture and licensing (as image.version, image.arch and image.lic); image name (as image.name) optionally with image project name for custom images (as image.project)."
-  default = {
-    version = "7.2.8"
-  }
-  validation {
-    condition     = contains(["arm", "x64"], var.fgt_image.arch)
-    error_message = "image.arch must be either 'arm' or 'x64' (default: 'x64')"
-  }
-  validation {
-    condition     = contains(["payg", "byol"], var.fgt_image.lic)
-    error_message = "image.lic can be either 'payg' or 'byol' (default: 'payg'). For FortiFlex use 'byol'"
-  }
-  validation {
-    condition     = anytrue([length(split(".", var.fgt_image.version)) == 3, length(split(".", var.fgt_image.version)) == 2, var.fgt_image.version == ""])
-    error_message = "image.version can be either null, contain FortiOS version in 3-digit format (eg. \"7.4.1\"), or major version in 2-digit format (eg. \"7.4\")"
-  }
-}
+
 
 variable "serial_port_enable" {
   type        = bool
@@ -257,5 +232,9 @@ variable "ilb_address" {
 }
 
 variable "fgt_umig" {
+  type = string
+}
+
+variable "fgt_image_url" {
   type = string
 }

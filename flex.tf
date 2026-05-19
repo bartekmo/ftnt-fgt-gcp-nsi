@@ -41,7 +41,7 @@ resource "fortiflexvm_entitlements_vm_token" "fgts" {
   serial_number    = each.key
   regenerate_token = true # If set as false, the provider would only provide the token and not regenerate the token.
   lifecycle {
-    //ignore_changes = [status]
+    ignore_changes = [regenerate_token]
   }
 }
 

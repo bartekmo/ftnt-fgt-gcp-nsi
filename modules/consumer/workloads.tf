@@ -1,6 +1,10 @@
+# 
+# Deploy two VMs into the same subnet
+# 
 resource "google_compute_instance" "vm1" {
   name         = "${var.prefix}-vm1"
   zone         = var.zones[0]
+  project      = var.project_id
   machine_type = "e2-micro"
   boot_disk {
     initialize_params {
@@ -15,8 +19,10 @@ resource "google_compute_instance" "vm1" {
 }
 
 resource "google_compute_instance" "vm2" {
-  name         = "${var.prefix}-vm2"
-  zone         = var.zones[0]
+  name    = "${var.prefix}-vm2"
+  zone    = var.zones[0]
+  project = var.project_id
+
   machine_type = "e2-micro"
   boot_disk {
     initialize_params {

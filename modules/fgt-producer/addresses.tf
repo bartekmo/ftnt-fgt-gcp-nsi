@@ -29,7 +29,7 @@ resource "google_compute_address" "data_prv" {
 resource "google_compute_address" "mgmt_pub" {
   for_each = var.mgmt_port_public ? local.zone_x_indx : {}
 
-  name   = "${local.prefix}addr2-mgmtpub-${each.value.fgt}-${local.zones_short[each.value.zone]}"
+  name   = "${local.prefix}addr-mgmtpub-${each.value.fgt}-${local.zones_short[each.value.zone]}"
   region = local.regions[each.value.zone]
 }
 
@@ -41,7 +41,7 @@ resource "google_compute_address" "mgmt_pub" {
 resource "google_compute_address" "ilb" {
   for_each = toset(var.zones)
 
-  name         = "${local.prefix}addr2-ilb-${local.zones_short[each.key]}"
+  name         = "${local.prefix}addr-ilb-${local.zones_short[each.key]}"
   region       = local.regions[each.key]
   address_type = "INTERNAL"
   subnetwork   = var.networks.data.subnet_name

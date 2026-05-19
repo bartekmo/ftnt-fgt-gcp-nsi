@@ -72,36 +72,7 @@ data "cloudinit_config" "fgt" {
 }
 
 
-#
-# Find image either based on version+arch+lic ...
-#
-module "fgtimage" {
-  count = var.fgt_image.version == "" ? 0 : 1
 
-  source = "./modules/fgt-get-image"
-  ver    = var.fgt_image.version
-  arch   = var.fgt_image.arch
-  lic    = "${try(var.license_files[0], "")}${try(var.flex_tokens[0], "")}" != "" ? "byol" : var.fgt_image.lic
-}
-# ... or based on family/name
-data "google_compute_image" "by_family_name" {
-  count = var.fgt_image.version == "" ? 1 : 0
-
-  project = var.fgt_image.project
-  family  = var.fgt_image.name == "" ? var.fgt_image.family : null
-  name    = var.fgt_image.name != "" ? var.fgt_image.name : null
-
-  lifecycle {
-    postcondition {
-      condition     = !(("${try(var.license_files[0], "")}${try(var.flex_tokens[0], "")}" != "") && strcontains(self.name, "ondemand"))
-      error_message = "You provided a FortiGate BYOL (or Flex) license, but you're attempting to deploy a PAYG image. This would result in a double license fee. \nUpdate module's 'image' parameter to fix this error.\n\nCurrent var.image value: \n  {%{for k, v in var.fgt_image}%{if tostring(v) != ""}\n    ${k}=${v}%{endif}%{endfor}\n  }"
-    }
-  }
-}
-# ... and pick one
-locals {
-  fgt_image = var.fgt_image.version == "" ? data.google_compute_image.by_family_name[0] : module.fgtimage[0].image
-}
 
 #
 # Deploy VMs
@@ -117,7 +88,7 @@ resource "google_compute_instance" "fgt_vm" {
 
   boot_disk {
     initialize_params {
-      image  = local.fgt_image.self_link
+      image  = var.fgt_image_url
       labels = var.labels
     }
   }
