@@ -1,11 +1,11 @@
 variable "prod_project_id" {
   type    = string
-  default = "forti-emea-se"
+  description = "ID of the GCP project where NSI producer resources will be created"
 }
 
 variable "cons_project_id" {
   type    = string
-  default = "forti-emea-se"
+  description = "ID of the GCP project where NSI consumer resources will be created"
 }
 
 variable "region" {
@@ -14,12 +14,6 @@ variable "region" {
 
 variable "prefix" {
   default = "bm-nsi"
-}
-
-variable "access_token" {
-  type     = string
-  default  = null
-  nullable = true
 }
 
 variable "cons_organization_id" {
